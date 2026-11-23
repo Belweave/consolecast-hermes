@@ -1,0 +1,72 @@
+name: consolecast
+version: 1.0.0
+description: "Console Cast for Hermes: bring your PS5 or Xbox broadcast into OBS with no capture card, go live on several destinations, and let Hermes produce the stream. Status, setup, go-live with confirmation, diagnostics, notifications and recaps."
+author:
+  name: Belweave
+  email: info@belweave.com
+  url: https://consolecast.app
+homepage: https://consolecast.app
+license: Apache-2.0
+manifest_version: 2
+api_version: 1
+requires_hermes: ">=0.23.3"
+tags: [streaming, obs, ps5, xbox, console, broadcast]
+platforms: [macos, linux]
+
+provides_tools:
+  - consolecast_status
+  - consolecast_preflight
+  - consolecast_start
+  - consolecast_stop
+  - consolecast_arm
+  - consolecast_disarm
+  - consolecast_console_setup
+  - consolecast_obs_add_source
+  - consolecast_obs_setup_scene
+  - consolecast_obs_output_start
+  - consolecast_obs_output_stop
+  - consolecast_destinations
+  - consolecast_destination_add_guide
+  - consolecast_destination_start
+  - consolecast_destination_stop
+  - consolecast_end_stream
+  - consolecast_wait_for_live
+  - consolecast_diagnose
+  - consolecast_license
+  - consolecast_viewer
+  - consolecast_logs
+  - consolecast_stream_summary
+  - consolecast_app_tools
+  - consolecast_app_call
+  - consolecast_notifications
+provides_hooks:
+  - pre_tool_call
+  - post_approval_response
+  - pre_llm_call
+
+config_schema:
+  binary:
+    type: str
+    default: ""
+    label: "consolecast binary"
+    description: "Path to the consolecast executable, if it is not in the usual place (/Applications/Console Cast.app on a Mac, PATH or /usr/lib/console-cast on Linux)."
+  context_injection:
+    type: bool
+    default: true
+    label: "Live status in stream chats"
+    description: "When you talk about your stream, add Console Cast's current status to that message so Hermes answers from the real state."
+  terminal_guard:
+    type: bool
+    default: true
+    label: "Block commands that would expose Console Cast secrets"
+    description: "Stops agent shell commands that would print the Console Cast agent token, read its secret files, carry a stream or licence key, change its AI Agents setting, reach Cloud or account commands, or run `consolecast tool`."
+  watch_interval_minutes:
+    type: int
+    default: 2
+    label: "Notification check interval (minutes)"
+    description: "How often /stream watch checks Console Cast."
+  free_week_warn_days:
+    type: int
+    default: 2
+    label: "Free-week reminder (days left)"
+    description: "Notify when this many days or fewer are left in the free week."

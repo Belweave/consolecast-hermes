@@ -56,7 +56,7 @@ def pre_tool_call(tool_name: str = "", args: Optional[dict] = None, task_id: str
                 return {"action": "block", "message": decision.message}
             if decision.action == "ask":
                 rule_key = safety.LEDGER.expect(safety.call_key(tool_name, args, task_id, session_id))
-                return {"action": "approve", "message": decision.message, "rule_key": rule_key}
+                return {"action": "approve", "message": decision.message + safety.ANSWER_ONCE, "rule_key": rule_key}
             return None
         if tool_name in ("terminal", "execute_code") and runtime.setting("terminal_guard"):
             command = str(args.get("command") or args.get("code") or "")

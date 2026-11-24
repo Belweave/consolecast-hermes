@@ -74,3 +74,13 @@ def test_watch_and_recap(pkg, fake_app):
 def test_add_never_asks_for_the_key_here(pkg, fake_app):
     out = run(pkg, "add kick")
     assert "consolecast output save kick" in out and "don't paste" in out
+
+
+def test_watch_slash_command_works_in_a_cron_run(pkg, fake_app, monkeypatch):
+    """The reviewer's rule is for agents; /stream watch is typed by a person and stays as it was."""
+    monkeypatch.setattr(pkg.watch, "in_cron_session", lambda: True)
+    monkeypatch.setattr(pkg.watch, "agent_scheduling_allowed", lambda: False)
+    assert "Stream notifications are on" in run(pkg, "watch on 5")
+    assert any(a.get("action") == "create" for _n, a in fake_app.ctx.dispatched)
+    assert "off" in run(pkg, "watch off")
+    assert not fake_app.ctx.cron_jobs

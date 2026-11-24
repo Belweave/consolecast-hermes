@@ -150,7 +150,14 @@ def test_preflight_has_no_setup_extras(pkg, fake_app):
     assert "for_setup" not in pkg.schemas.SCHEMAS["consolecast_preflight"]["parameters"]["properties"]
 
 
-def test_notifications_via_hermes_cron(pkg, fake_app, tmp_path):
+def cron_run(pkg, monkeypatch, *, cron, allowed=False):
+    """Pretend to be (or not be) inside a Hermes cron run, with cron.allow_agent_scheduling on or off."""
+    monkeypatch.setattr(pkg.watch, "in_cron_session", lambda: cron)
+    monkeypatch.setattr(pkg.watch, "agent_scheduling_allowed", lambda: allowed)
+
+
+def test_notifications_via_hermes_cron(pkg, fake_app, tmp_path, monkeypatch):
+    cron_run(pkg, monkeypatch, cron=False)
     out = call(pkg, "consolecast_notifications", {"action": "on", "every_minutes": 3, "deliver": "telegram"})
     assert out["ok"] and "every 3 min" in out["summary"]
     create = next(a for _n, a in fake_app.ctx.dispatched if a.get("action") == "create")
@@ -161,3 +168,50 @@ def test_notifications_via_hermes_cron(pkg, fake_app, tmp_path):
     assert call(pkg, "consolecast_notifications", {"action": "status"})["on"] is True
     assert call(pkg, "consolecast_notifications", {"action": "off"})["ok"] is True
     assert not (tmp_path / "home" / "scripts" / "consolecast-watch.py").exists()
+
+
+def test_cron_run_cannot_turn_notifications_on_or_off(pkg, fake_app, tmp_path, monkeypatch):
+    launcher = tmp_path / "home" / "scripts" / "consolecast-watch.py"
+    cron_run(pkg, monkeypatch, cron=True, allowed=False)
+    out = call(pkg, "consolecast_notifications", {"action": "on", "every_minutes": 3})
+    assert out["ok"] is False and "/stream watch on" in out["error"] and "allow_agent_scheduling" in out["error"]
+    assert fake_app.ctx.dispatched == [] and not launcher.exists()
+    fake_app.ctx.cron_jobs.append({"id": "job1", "name": "consolecast-watch", "schedule": "every 2m"})
+    out = call(pkg, "consolecast_notifications", {"action": "off"})
+    assert out["ok"] is False and "/stream watch off" in out["error"]
+    assert fake_app.ctx.dispatched == [] and fake_app.ctx.cron_jobs
+    status = call(pkg, "consolecast_notifications", {"action": "status"})
+    assert status["ok"] is True and status["on"] is True
+    assert [a.get("action") for _n, a in fake_app.ctx.dispatched] == ["list"]
+
+
+def test_unknown_cron_state_is_refused(pkg, fake_app, monkeypatch):
+    cron_run(pkg, monkeypatch, cron=None, allowed=False)  # a Hermes without get_session_env
+    out = call(pkg, "consolecast_notifications", {"action": "on"})
+    assert out["ok"] is False and fake_app.ctx.dispatched == []
+
+
+def test_cron_run_may_schedule_when_hermes_allows_it(pkg, fake_app, monkeypatch):
+    cron_run(pkg, monkeypatch, cron=True, allowed=True)
+    out = call(pkg, "consolecast_notifications", {"action": "on", "every_minutes": 5})
+    assert out["ok"] is True and "every 5 min" in out["summary"]
+    assert any(a.get("action") == "create" for _n, a in fake_app.ctx.dispatched)
+    assert call(pkg, "consolecast_notifications", {"action": "off"})["ok"] is True
+    assert not fake_app.ctx.cron_jobs
+
+
+def test_model_cannot_pick_the_person_path(pkg, fake_app, monkeypatch):
+    cron_run(pkg, monkeypatch, cron=True, allowed=False)
+    out = call(pkg, "consolecast_notifications", {"action": "on", "by_person": True, "dispatch": "x",
+                                                  "run_yourself": True})
+    assert out["ok"] is False and fake_app.ctx.dispatched == []
+    assert pkg.tools.LOCAL_HANDLERS["consolecast_notifications"] is pkg.tools.handle_notifications
+    import inspect
+
+    assert "manage_for_person" not in inspect.getsource(pkg.tools)
+
+
+def test_approval_prompt_asks_for_once(pkg, fake_app):
+    directive = pkg.hooks.pre_tool_call(tool_name="consolecast_destination_start", args={"id": "youtube"})
+    assert directive["action"] == "approve" and 'Answer "once"' in directive["message"]
+    assert directive["rule_key"].startswith("consolecast:")

@@ -26,7 +26,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Optional
 
-PLUGIN_VERSION = "1.0.0"
+PLUGIN_VERSION = "1.0.1"
 SITE_URL = "https://consolecast.app"
 DOWNLOAD_URL = "https://consolecast.app/download"
 PRICING_URL = "https://consolecast.app/pricing"

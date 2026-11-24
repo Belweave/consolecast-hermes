@@ -2,6 +2,13 @@
 
 All notable changes to the Console Cast plugin for Hermes Agent.
 
+## 1.0.1
+
+Tested with Hermes Agent 0.23.4 and upstream main.
+
+- `consolecast_notifications` no longer lets an agent create or remove the `consolecast-watch` cron job from inside a scheduled Hermes run unless `cron.allow_agent_scheduling` is on, the same rule Hermes applies to its own cron tool. It tells the user to type `/stream watch on` or `off` instead. `status` still works, and `/stream watch` typed by a person is unchanged. If Hermes cannot say whether this is a scheduled run, agents are refused too.
+- Go-live approval prompts now ask you to answer "once". Every go-live is asked separately, so an "always" answer only left an unused entry in Hermes's `command_allowlist`.
+
 ## 1.0.0
 
 First release. Tested with Hermes Agent 0.23.3 and Console Cast 0.3.x on macOS (Apple Silicon).

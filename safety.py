@@ -5,7 +5,11 @@ something:
 
 1. ``pre_tool_call`` returns ``{"action": "approve"}``, so Hermes asks a person through its normal
    approval prompt (CLI, TUI, Desktop, or a /approve button in Telegram, Discord, Slack...). Each
-   request gets its own rule key, so an "always" answer never pre-approves the next go-live.
+   request gets its own rule key, so an "always" answer never pre-approves the next go-live. A
+   stable key would make "always" skip Hermes's prompt for every later go-live, and with "Go live
+   without asking" on in the app nobody would be asked at all, so the prompt asks for "once"
+   instead (``ANSWER_ONCE``): an "always" still approves only this request, and Hermes keeps its
+   key in ``command_allowlist`` where it never matches again.
 2. Console Cast asks again through MCP elicitation unless the user turned on "Go live without asking"
    in the app. The plugin answers that question "yes" only when step 1 was answered by a person for
    this exact call (``post_approval_response`` with once/session/always). When Hermes skipped its
@@ -53,6 +57,9 @@ KEY_ENTRY_HELP = ("Keys never go through Hermes. The user enters them in Console
                   "window for a licence key), or in their own terminal with Console Cast's CLI "
                   "(`consolecast output save ID` or `consolecast license activate`, which read the value on "
                   "standard input). Never ask the user to paste a key into this chat.")
+
+ANSWER_ONCE = (" Answer \"once\": each request is asked on its own, and \"always\" would only leave an unused "
+               "entry in Hermes's allowlist.")
 
 APPROVAL_TTL_S = 600.0
 ACCEPTED_CHOICES = {"once", "session", "always", "approve", "approved", "allow"}

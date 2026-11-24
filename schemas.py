@@ -142,7 +142,8 @@ SCHEMAS: dict[str, dict[str, Any]] = {s["name"]: s for s in [
         "Turn on, turn off or check stream notifications: a no-LLM Hermes cron job that checks Console Cast every "
         "few minutes and messages the user (in this chat, or Telegram/Discord/... via 'deliver') when the console "
         "goes live or ends, a destination drops or recovers, or the free week is about to end. Only on the user's "
-        "request.",
+        "request. In a scheduled (cron) run, on and off are refused unless Hermes's cron.allow_agent_scheduling "
+        "is on; the user runs /stream watch on|off instead.",
         {"action": {"type": "string", "enum": ["on", "off", "status"]},
          "every_minutes": {"type": "integer", "minimum": 1, "maximum": 60, "description": "Default 2."},
          "deliver": {"type": "string", "description": "Hermes cron delivery target, e.g. 'origin' (default, this "

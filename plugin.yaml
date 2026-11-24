@@ -1,5 +1,5 @@
 name: consolecast
-version: 1.0.0
+version: 1.0.1
 description: "Console Cast for Hermes: bring your PS5 or Xbox broadcast into OBS with no capture card, go live on several destinations, and let Hermes produce the stream. Status, setup, go-live with confirmation, diagnostics, notifications and recaps."
 author:
   name: Belweave

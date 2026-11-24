@@ -71,7 +71,7 @@ def handle(raw_args: str = "", **_: Any) -> str:
             action = rest[0].lower() if rest else "status"
             minutes = next((r for r in rest[1:] if r.isdigit()), None)
             deliver = next((r for r in rest[1:] if not r.isdigit()), None)
-            res = watch.manage(action, every_minutes=minutes, deliver=deliver)
+            res = watch.manage_for_person(action, every_minutes=minutes, deliver=deliver)
             return res.get("summary") or res.get("error") or "Done."
         if sub in ("recap", "summary"):
             return tools.summary_result()["summary"]

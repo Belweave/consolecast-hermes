@@ -3,6 +3,14 @@
 `/stream watch on` writes a small launcher to <HERMES_HOME>/scripts/ (Hermes only runs cron scripts
 from there) and creates the job with the `cronjob_manage` tool, so it gets Hermes's normal delivery:
 this chat, Telegram, Discord, Slack, ... The watcher itself only reads Console Cast's status.
+
+Two entry points, one per caller:
+
+* :func:`manage` is what the model reaches (the ``consolecast_notifications`` tool). Going through
+  ``ctx.dispatch_tool`` skips the cron run's removal of the ``cronjob`` toolset, so inside a Hermes
+  cron run it refuses ``on`` and ``off`` unless ``cron.allow_agent_scheduling`` is true, exactly as
+  Hermes would for its own cron tool. ``status`` is always allowed.
+* :func:`manage_for_person` is only for ``/stream watch``, which a person types. No tool calls it.
 """
 
 from __future__ import annotations
@@ -82,9 +90,82 @@ def write_launcher(every_warn_days: int) -> Path:
     return path
 
 
+_FALSE_WORDS = ("", "0", "false", "no", "off")
+_TRUE_WORDS = ("1", "true", "yes", "on")
+
+
+def in_cron_session() -> Optional[bool]:
+    """True inside a Hermes cron run, False outside one, None when this Hermes cannot say.
+
+    Reads ``HERMES_CRON_SESSION`` through ``gateway.session_context.get_session_env`` (public plugin
+    API): the cron scheduler binds it per run, so ``os.environ`` alone would miss it."""
+    try:
+        from gateway.session_context import get_session_env
+    except Exception:
+        return None
+    try:
+        value = get_session_env("HERMES_CRON_SESSION", "")
+    except Exception:
+        return None
+    return str(value or "").strip().lower() not in _FALSE_WORDS
+
+
+def agent_scheduling_allowed() -> bool:
+    """Hermes's ``cron.allow_agent_scheduling`` (default false). False when it cannot be read."""
+    try:
+        try:
+            from hermes_cli.config import load_config_readonly as load
+        except ImportError:
+            from hermes_cli.config import load_config as load
+        cfg = load()
+    except Exception:
+        return False
+    cron = cfg.get("cron") if isinstance(cfg, dict) else None
+    value = cron.get("allow_agent_scheduling") if isinstance(cron, dict) else None
+    if isinstance(value, str):
+        return value.strip().lower() in _TRUE_WORDS
+    if isinstance(value, (bool, int, float)):
+        return bool(value)
+    return False
+
+
+def cron_refusal(action: str) -> Optional[str]:
+    """Why an agent may not turn notifications on or off here, or None when it may.
+
+    Refuses when this is a cron run, and also when this Hermes cannot say whether it is one (no
+    ``get_session_env``): refusing costs the user one typed command, allowing could let a scheduled
+    run create jobs with ``cron.allow_agent_scheduling`` off."""
+    if action not in ("on", "off"):
+        return None
+    cron = in_cron_session()
+    if cron is False or agent_scheduling_allowed():
+        return None
+    where = "from a scheduled Hermes run" if cron else "here (this Hermes cannot say whether this is a scheduled run)"
+    return (f"Stream notifications cannot be turned {action} by an agent {where}, and Hermes's "
+            "cron.allow_agent_scheduling setting is off. Nothing was changed. Ask the user to run "
+            f"/stream watch {action} themselves.")
+
+
 def manage(action: str, *, every_minutes: Any = None, deliver: Any = None,
            dispatch: Optional[Dispatch] = None) -> dict[str, Any]:
+    """The model's path (``consolecast_notifications``). Checks :func:`cron_refusal` before anything
+    is written or dispatched."""
     action = (action or "status").strip().lower()
+    refusal = cron_refusal(action)
+    if refusal:
+        return {"ok": False, "error": refusal, "run_yourself": f"/stream watch {action}"}
+    return _manage(action, every_minutes=every_minutes, deliver=deliver, dispatch=dispatch)
+
+
+def manage_for_person(action: str, *, every_minutes: Any = None, deliver: Any = None,
+                      dispatch: Optional[Dispatch] = None) -> dict[str, Any]:
+    """``/stream watch`` only: a person typed it, so Hermes's agent-scheduling rule does not apply."""
+    return _manage((action or "status").strip().lower(), every_minutes=every_minutes, deliver=deliver,
+                   dispatch=dispatch)
+
+
+def _manage(action: str, *, every_minutes: Any = None, deliver: Any = None,
+            dispatch: Optional[Dispatch] = None) -> dict[str, Any]:
     plat = client.detect_platform()
     if action == "on" and not plat.supported:
         return {"ok": False, "error": plat.note}

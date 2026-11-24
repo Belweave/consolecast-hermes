@@ -128,3 +128,7 @@ Belweave · https://consolecast.app · info@belweave.com
 Copyright 2026 Belweave. The plugin is licensed under the Apache License 2.0 (see [LICENSE](LICENSE)). Console Cast itself is a separate product with its own terms.
 
 PlayStation and PS5 are registered trademarks of Sony Interactive Entertainment Inc. Xbox is a registered trademark of Microsoft Corporation. Twitch is a registered trademark of Twitch Interactive, Inc. YouTube is a trademark of Google LLC. Discord is a registered trademark of Discord Inc. OBS Studio is a trademark of the OBS Project. Console Cast is not affiliated with or endorsed by any of them.
+
+## License
+
+This plugin is Apache-2.0, copyright Belweave. See [LICENSE](LICENSE). The licence covers the files in this repository only. Console Cast itself, the app this plugin controls, is proprietary, closed-source software from Belweave, used under the terms at <https://consolecast.app/legal/terms>.
